@@ -1,8 +1,10 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const dns = require('dns');
 const app = express();
 const bodyParser = require('body-parser');
+const connectDB = require('./connect.js');
 
 // Basic Configuration
 const port = process.env.PORT || 5000;
@@ -17,10 +19,60 @@ app.get('/', function(req, res) {
 });
 
 // API endpoints
-app.get('/api/hello', function(req, res) {
-  res.json({ greeting: 'hello API' });
+app.post('/api/shorturl', async (req, res) => {
+  const originalURL = req.body.url;
+
+  // Validate the URL format
+  const isValidURL = /^(http|https):\/\/[^ "]+$/.test(originalURL);
+  if (!isValidURL) {
+    return res.json({ error: 'invalid url' });
+  }
+
+  // Check if the domain exists using dns.lookup
+  const urlParts = new URL(originalURL);
+  const hostname = urlParts.hostname;
+  dns.lookup(hostname, async (err) => {
+    if (err) {
+      return res.json({ error: 'invalid url' });
+    }
+
+    // Check if the URL already exists in the database
+    const existingURL = await URLModel.findOne({ original_url: originalURL });
+    if (existingURL) {
+      return res.json({ original_url: existingURL.original_url, short_url: existingURL.short_url });
+    }
+
+    // Create a new short URL entry
+    const newURL = new URLModel({ original_url: originalURL });
+    await newURL.save();
+
+    return res.json({ original_url: newURL.original_url, short_url: newURL.short_url });
+  });
 });
 
-app.listen(port, function() {
-  console.log(`Listening on port ${port}`);
+// GET endpoint for redirecting to the original URL based on the short URL
+app.get('/api/shorturl/:short_url', async (req, res) => {
+  const shortURL = req.params.short_url;
+
+  // Find the original URL based on the short URL
+  const urlEntry = await URLModel.findOne({ short_url: shortURL });
+  if (!urlEntry) {
+    return res.json({ error: 'short url not found' });
+  }
+
+  // Redirect to the original URL
+  res.redirect(urlEntry.original_url);
 });
+
+
+const start = async () => {
+  try {
+    await connectDB(process.env.MONGO_URI);
+    app.listen(port, () => console.log(`Server is listening to ${port}....`));
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+
+start();
