@@ -37,13 +37,13 @@ app.post('/api/shorturl', async (req, res) => {
       return res.json({ error: 'invalid url' });
     }
 
-    // Check if the URL already exists in the database
+    // Check if  URL exists in the database
     const existingURL = await URL.findOne({ original_url: originalURL });
     if (existingURL) {
       return res.json({ original_url: existingURL.original_url, short_url: existingURL.short_url });
     }
 
-    // Create a new short URL entry
+    // Create a new short URL 
     const newURL = new URL({ original_url: originalURL });
     await newURL.save();
 
@@ -61,7 +61,7 @@ app.get('/api/shorturl/:short_url', async (req, res) => {
     return res.json({ error: 'short url not found' });
   }
 
-  // Redirect to the original URL
+  // Redirect to original URL
   res.redirect(urlEntry.original_url);
 });
 
