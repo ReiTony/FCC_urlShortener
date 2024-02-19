@@ -6,6 +6,7 @@ const app = express();
 const bodyParser = require('body-parser');
 const connectDB = require('./connect.js');
 
+const URL = require('./models/urlSchema.js');
 // Basic Configuration
 const port = process.env.PORT || 5000;
 
@@ -37,13 +38,13 @@ app.post('/api/shorturl', async (req, res) => {
     }
 
     // Check if the URL already exists in the database
-    const existingURL = await URLModel.findOne({ original_url: originalURL });
+    const existingURL = await URL.findOne({ original_url: originalURL });
     if (existingURL) {
       return res.json({ original_url: existingURL.original_url, short_url: existingURL.short_url });
     }
 
     // Create a new short URL entry
-    const newURL = new URLModel({ original_url: originalURL });
+    const newURL = new URL({ original_url: originalURL });
     await newURL.save();
 
     return res.json({ original_url: newURL.original_url, short_url: newURL.short_url });
@@ -55,7 +56,7 @@ app.get('/api/shorturl/:short_url', async (req, res) => {
   const shortURL = req.params.short_url;
 
   // Find the original URL based on the short URL
-  const urlEntry = await URLModel.findOne({ short_url: shortURL });
+  const urlEntry = await URL.findOne({ short_url: shortURL });
   if (!urlEntry) {
     return res.json({ error: 'short url not found' });
   }
