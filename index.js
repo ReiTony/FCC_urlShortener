@@ -56,32 +56,29 @@ app.post("/api/shorturl", async (req, res) => {
     const urlParts = new URL(originalURL);
     const hostname = urlParts.hostname;
 
-    dns.lookup(hostname, async (err) => {
-      if (err) {
-        return res.json({ error: "invalid url" });
-      }
+    // Use promisified dns.lookup
+    await dnsPromisify(hostname);
 
-      // Check if URL exists in the database
-      const existingURL = await URLModel.findOne({ original_url: originalURL });
-      if (existingURL) {
-        return res.json({
-          original_url: existingURL.original_url,
-          short_url: existingURL.short_url,
-        });
-      }
-
-      // Create a new short URL
-      const newURL = new URLModel({ original_url: originalURL });
-      await newURL.save();
-
+    // Check if URL exists in the database
+    const existingURL = await URLModel.findOne({ original_url: originalURL });
+    if (existingURL) {
       return res.json({
-        original_url: newURL.original_url,
-        short_url: newURL.short_url,
+        original_url: existingURL.original_url,
+        short_url: existingURL.short_url,
       });
+    }
+
+    // Create a new short URL
+    const newURL = new URLModel({ original_url: originalURL });
+    await newURL.save();
+
+    return res.json({
+      original_url: newURL.original_url,
+      short_url: newURL.short_url,
     });
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ error: "Internal Server Error" });
+    return res.json({ error: "invalid url" });
   }
 });
 
